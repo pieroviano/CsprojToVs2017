@@ -12,9 +12,9 @@ using static Microsoft.DotNet.Cli.CommandLine.Create;
 
 namespace Project2015To2017.Migrate2019.Tool
 {
-	internal static class Program
+	public static class Program
 	{
-		private static int Main(string[] args)
+		public static int Main(string[] args)
 		{
 			ProgramBase.CreateLogger();
 
