@@ -7,6 +7,11 @@ namespace Project2015To2017.Definition
 {
 	public sealed class Solution
 	{
+		public Solution()
+		{
+			
+		}
+
 		public FileInfo FilePath { get; set; }
 		public IReadOnlyList<ProjectReference> ProjectPaths { get; set; }
 		public DirectoryInfo SolutionFolder => this.FilePath.Directory;
