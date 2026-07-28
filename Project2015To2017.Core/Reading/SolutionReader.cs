@@ -18,6 +18,7 @@ public sealed class SolutionReader
 	private const string cpsVbProjectGuid = "{778DAE3C-4631-46EA-AA77-85C1314464D9}";
 	private const string fsProjectGuid = "{F2A71F9B-5D33-465A-A702-920D77279786}";
 	private const string solutionFolderGuid = "{2150E333-8FDC-42A3-9474-1A3956D46DE8}";
+	private const string sharedProjectGuid = "{D954291E-2A0B-460D-934E-DC6B0785DB48}";
 	public static readonly SolutionReader Instance = new();
 
 	private static readonly Lazy<Regex> crackProjectLine = new(() =>
@@ -71,6 +72,42 @@ public sealed class SolutionReader
 	private static bool IsSolutionFolder(string guid)
 	{
 		return string.Equals(guid, solutionFolderGuid, StringComparison.OrdinalIgnoreCase);
+	}
+
+	private static bool IsSharedProject(string guid)
+	{
+		return string.Equals(guid, sharedProjectGuid, StringComparison.OrdinalIgnoreCase);
+	}
+
+	// Records a project we cannot convert. Solution folders are structural entries and produce no
+	// warning at all; shared projects (.shproj) are a well-known unconvertible type, so they get a
+	// clear, dedicated message instead of the cryptic raw-GUID "unsupported type" warning.
+	private static void ReportUnsupportedProject(
+		ILogger logger,
+		string name,
+		string path,
+		string typeGuid,
+		ICollection<string> unsupported)
+	{
+		if (IsSolutionFolder(typeGuid))
+		{
+			return;
+		}
+
+		if (IsSharedProject(typeGuid))
+		{
+			logger.LogWarning(
+				"Skipping shared project [{Name}] ({Path}); shared projects (.shproj) have no target framework and are not converted.",
+				name, path);
+		}
+		else
+		{
+			logger.LogWarning(
+				"Unsupported project[{Name}] type {Type}",
+				name, typeGuid);
+		}
+
+		unsupported.Add(path);
 	}
 
 	private static bool IsSupportedProjectType(string guid)
@@ -135,14 +172,7 @@ public sealed class SolutionReader
 				    out var path,
 				    out var projectGuid))
 			{
-				if (!IsSolutionFolder(typeGuid))
-				{
-					logger.LogWarning(
-						"Unsupported project[{Name}] type {Type}",
-						name, typeGuid);
-					unsupported.Add(path);
-				}
-
+				ReportUnsupportedProject(logger, name, path, typeGuid, unsupported);
 				continue;
 			}
 
@@ -208,14 +238,7 @@ public sealed class SolutionReader
 
 			if (!IsSupportedProjectType(projectTypeGuid))
 			{
-				if (!IsSolutionFolder(projectTypeGuid))
-				{
-					logger.LogWarning(
-						"Unsupported project[{Name}] type {Type}",
-						name, projectTypeGuid);
-					unsupported.Add(path);
-				}
-
+				ReportUnsupportedProject(logger, name, path, projectTypeGuid, unsupported);
 				continue;
 			}
 

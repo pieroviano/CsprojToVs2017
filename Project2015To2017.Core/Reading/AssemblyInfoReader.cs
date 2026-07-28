@@ -39,8 +39,15 @@ namespace Project2015To2017.Reading
 			if (project.IsModernProject || wildcardCompileItems.Count > 0)
 				allFiles = allFiles.Concat(project.FindAllWildcardFiles(project.CodeFileExtension));
 
+			// A modern project (or one with wildcard Compile items) has both its explicit Compile
+			// includes and a recursive on-disk scan folded into allFiles, so the same physical
+			// AssemblyInfo file can appear more than once. Deduplicate by absolute path (paths are
+			// case-insensitive on Windows) to avoid a spurious "multiple files found" warning that
+			// otherwise lists the same file twice.
 			var assemblyInfoAllFiles = allFiles
 				.Where(x => IsAssemblyInfoFile(x, project.CodeFileExtension))
+				.GroupBy(x => x.FullName, StringComparer.OrdinalIgnoreCase)
+				.Select(g => g.First())
 				.ToList();
 
 			if (assemblyInfoAllFiles.Count == 0)
