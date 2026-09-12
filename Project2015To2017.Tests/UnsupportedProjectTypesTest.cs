@@ -45,7 +45,7 @@ namespace Project2015To2017.Tests
 		[TestMethod]
 		public void IsUnsupportedProjectType_ThrowsExceptionIfXDocumentIsNull()
 		{
-			Assert.ThrowsException<ArgumentNullException>(() =>
+			Assert.Throws<ArgumentNullException>(() =>
 			{
 				UnsupportedProjectTypes.IsUnsupportedProjectType(null);
 			});

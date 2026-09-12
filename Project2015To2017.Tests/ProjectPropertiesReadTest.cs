@@ -209,10 +209,11 @@ namespace Project2015To2017.Tests
 		}
 
 		[TestMethod]
-		[ExpectedException(typeof(NotSupportedException))]
 		public async Task ThrowsOnNoUnconditionalPropertyGroup()
 		{
-			var xml = @"<?xml version=""1.0"" encoding=""utf-8""?>
+			Assert.ThrowsAsync<NotSupportedException>(async () =>
+			{
+				var xml = @"<?xml version=""1.0"" encoding=""utf-8""?>
 <Project ToolsVersion=""14.0"" DefaultTargets=""Build"" xmlns=""http://schemas.microsoft.com/developer/msbuild/2003"">
   <PropertyGroup Condition="" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' "">
 	<OutputType>Library</OutputType>
@@ -221,14 +222,16 @@ namespace Project2015To2017.Tests
   </PropertyGroup>
 </Project>";
 
-			await ParseAndTransform(xml).ConfigureAwait(false);
+				await ParseAndTransform(xml).ConfigureAwait(false);
+			});
 		}
 
 		[TestMethod]
-		[ExpectedException(typeof(NotSupportedException))]
 		public async Task ThrowsOnNoOutput()
 		{
-			var xml = @"<?xml version=""1.0"" encoding=""utf-8""?>
+			Assert.ThrowsAsync<NotSupportedException>(async () =>
+			{
+				var xml = @"<?xml version=""1.0"" encoding=""utf-8""?>
 <Project ToolsVersion=""14.0"" DefaultTargets=""Build"" xmlns=""http://schemas.microsoft.com/developer/msbuild/2003"">
   <PropertyGroup>
     <TargetFrameworkVersion>v4.6.2</TargetFrameworkVersion>
@@ -236,7 +239,8 @@ namespace Project2015To2017.Tests
   </PropertyGroup>
 </Project>";
 
-			await ParseAndTransform(xml).ConfigureAwait(false);
+				await ParseAndTransform(xml).ConfigureAwait(false);
+			});
 		}
 
 		[TestMethod]

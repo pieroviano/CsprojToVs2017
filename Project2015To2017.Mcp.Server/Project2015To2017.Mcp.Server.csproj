@@ -15,8 +15,8 @@
         <PackageId>Net4x.$(ProjectName)</PackageId>
     </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="ModelContextProtocol" Version="2.0.0-rc.1" />
-        <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
+        <PackageReference Include="ModelContextProtocol" Version="2.2.0" />
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.12" />
         <PackageReference Include="Net4x.NuGetUtility" Version="$(NuGetUtilityVersion)" PrivateAssets="All" />
     </ItemGroup>
     <ItemGroup>
