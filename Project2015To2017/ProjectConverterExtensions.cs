@@ -30,6 +30,15 @@ namespace Project2015To2017
 							}
 							break;
 						}
+					case ".slnx":
+						{
+							var solution = SolutionReader.Instance.Read(file, logger);
+							foreach (var project in self.ProcessSolutionFile(solution))
+							{
+								yield return project;
+							}
+							break;
+						}
 					case string s when ProjectConverter.ProjectFileMappings.ContainsKey(extension):
 						{
 							yield return self.ProcessProjectFile(file, null);

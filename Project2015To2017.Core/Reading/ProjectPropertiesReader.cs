@@ -52,9 +52,18 @@ namespace Project2015To2017.Reading
 			}
 			else
 			{
-				project.Type = ToApplicationType(
-					project.Property("OutputType", tryConditional: true)?.Value
-					?? (project.IsModernProject ? "library" : null));
+				// An absent OutputType defaults to a class library: that is what MSBuild and the C#
+				// compiler assume when the property is omitted (VS templates always write it out, but
+				// hand-authored/legacy projects such as MonoDevelop's rely on the default). Only the
+				// unconditional-null case is defaulted here; an OutputType that is present but holds an
+				// unrecognised value still throws from ToApplicationType below.
+				var outputType = project.Property("OutputType", tryConditional: true)?.Value;
+				if (string.IsNullOrWhiteSpace(outputType))
+				{
+					outputType = "library";
+				}
+
+				project.Type = ToApplicationType(outputType);
 
 				if (project.Type == ApplicationType.Unknown)
 				{
@@ -220,6 +229,16 @@ namespace Project2015To2017.Reading
 			if (targetFramework.StartsWith("v", StringComparison.OrdinalIgnoreCase))
 			{
 				return "net" + targetFramework.Substring(1).Replace(".", string.Empty);
+			}
+
+			// The value contains an unresolved MSBuild property/expression (e.g. $(MDFrameworkVersion)).
+			// We cannot translate it to a concrete TFM here, so return it verbatim instead of throwing.
+			// This lets parsing fall through to the ambiguous-framework path where the value is either
+			// surfaced to the user via the unknown-target-framework callback or logged as undeterminable,
+			// rather than aborting the whole solution.
+			if (targetFramework.Contains("$"))
+			{
+				return targetFramework;
 			}
 
 			throw new NotSupportedException($"Target framework {targetFramework} is not supported.");

@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 namespace Project2015To2017.Reading.Conditionals
@@ -38,7 +38,7 @@ namespace Project2015To2017.Reading.Conditionals
 			// the result is empty string.
 			// If at least one of the left or the right hand side will evaluate to empty, 
 			// and we know which do, then we already have enough information to evaluate this expression.
-			// That means we don't have to fully expand a condition like " '@(X)' == '' " 
+			// That means we don't have to fully expand a condition like " '@(X)'=='' " 
 			// which is a performance advantage if @(X) is a huge item list.
 			if (this.LeftChild.EvaluatesToEmpty(state) || this.RightChild.EvaluatesToEmpty(state))
 			{

@@ -1,8 +1,4 @@
-using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Project2015To2017.Analysis;
 
 namespace Project2015To2017.Migrate2017.Tool

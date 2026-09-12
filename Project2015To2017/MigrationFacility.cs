@@ -77,7 +77,7 @@ namespace Project2015To2017
 		public MigrationFacility(ILogger logger, params PatternProcessor[] additionalProcessors)
 		{
 			Logger = logger;
-			Extensions = ProjectConverter.ProjectFileMappings.Keys.Concat(new[] { ".sln" }).ToImmutableArray();
+			Extensions = ProjectConverter.ProjectFileMappings.Keys.Concat(new[] { ".sln", ".slnx" }).ToImmutableArray();
 			Processors = new List<PatternProcessor>(2 + additionalProcessors.Length)
 			{
 				fileProcessor, directoryProcessor
@@ -149,12 +149,19 @@ namespace Project2015To2017
 					switch (extension)
 					{
 						case ".sln":
-							{
-								var solution = SolutionReader.Instance.Read(file, Logger);
-								convertedSolutions.Add(solution);
-								convertedProjects.AddRange(converter.ProcessSolutionFile(solution).Where(x => x != null));
-								break;
-							}
+						{
+							var solution = SolutionReader.Instance.Read(file, Logger);
+							convertedSolutions.Add(solution);
+							convertedProjects.AddRange(converter.ProcessSolutionFile(solution).Where(x => x != null));
+							break;
+						}
+						case ".slnx":
+						{
+							var solution = SolutionReader.Instance.Read(file, Logger);
+							convertedSolutions.Add(solution);
+							convertedProjects.AddRange(converter.ProcessSolutionFile(solution).Where(x => x != null));
+							break;
+						}
 						default:
 							{
 								var converted = converter.ProcessProjectFile(file, null);

@@ -7,6 +7,13 @@ namespace Project2015To2017.Migrate2017.Tool
 		private static bool AskBinaryChoice(string question, string yes = "Yes", string no = "No",
 			bool defaultChoiceIsYes = true)
 		{
+			return Ask?.Invoke(question, yes, no, defaultChoiceIsYes) ?? true;
+		}
+
+		public static Func<string, string, string, bool, bool> Ask = DefaultAsk;
+
+		private static bool DefaultAsk(string question, string yes, string no, bool defaultChoiceIsYes)
+		{
 			Console.Out.Flush();
 			var yesCharLower = char.ToLowerInvariant(yes[0]);
 			var noCharLower = char.ToLowerInvariant(no[0]);

@@ -1,13 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-	<TargetFrameworks>netstandard2.0;net461</TargetFrameworks>
-	<RootNamespace>Project2015To2017.Migrate2017</RootNamespace>
-	<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFrameworks>netstandard2.0;net461</TargetFrameworks>
+		<RootNamespace>Project2015To2017.Migrate2017</RootNamespace>
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<NoWarn>NU5125;NU1900</NoWarn>
+	</PropertyGroup>
 
-  <ItemGroup>
-	<ProjectReference Include="..\Project2015To2017.Core\Project2015To2017.Core.csproj" />
-  </ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\Project2015To2017.Core\Project2015To2017.Core.csproj" />
+	</ItemGroup>
 
 </Project>
