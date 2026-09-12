@@ -3,20 +3,19 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Xunit;
 using Project2015To2017.Definition;
 using Project2015To2017.Migrate2017.Transforms;
 using Project2015To2017.Reading;
 
 namespace Project2015To2017.Tests
 {
-	[TestClass]
-	public class XamlTransformationTest
-	{
-		[TestMethod]
-		public async Task TransformsPresentationPages()
-		{
-			var project = await ParseAndTransform(@"
+    public class XamlTransformationTest
+    {
+        [Fact]
+        public async Task TransformsPresentationPages()
+        {
+            var project = await ParseAndTransform(@"
 <Project ToolsVersion=""14.0"" DefaultTargets=""Build"" xmlns=""http://schemas.microsoft.com/developer/msbuild/2003"">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -74,57 +73,33 @@ namespace Project2015To2017.Tests
     </Page>
   </ItemGroup>
 </Project>");
+            Assert.True(project.IsWindowsPresentationFoundationProject());
+            Assert.False(project.IsWindowsFormsProject());
+            Assert.Equal(1, project.TargetFrameworks.Count);
+            Assert.Equal(1, project.TargetFrameworks.Count(x => x == "net461"));
+            Assert.Equal(2, project.Configurations.Count);
+            Assert.Equal(1, project.Configurations.Count(x => x == "Debug"));
+            Assert.Equal(1, project.Configurations.Count(x => x == "Release"));
+            Assert.Equal(1, project.Platforms.Count);
+            Assert.Equal(1, project.Platforms.Count(x => x == "AnyCPU"));
+            Assert.Equal(5, project.PropertyGroups.Count);
+            var transformation = new XamlPagesTransformation();
+            transformation.Transform(project);
+            var includeItems = project.ItemGroups.SelectMany(x => x.Elements()).ToImmutableList();
+            Assert.Equal(7, includeItems.Count);
+            Assert.Equal(5, includeItems.Count(x => x.Name == project.XmlNamespace + "Reference"));
+            Assert.Equal(1, includeItems.Count(x => x.Name == project.XmlNamespace + "Page"));
+            Assert.Equal(0, includeItems.Count(x => x.Name == project.XmlNamespace + "ApplicationDefinition"));
+            Assert.Equal(1, includeItems.Count(x => x.Name == project.XmlNamespace + "Compile"));
+            Assert.Equal(1, includeItems.Count(x => x.Name == project.XmlNamespace + "Compile" && x.Attribute("Include") != null));
+        }
 
-			Assert.IsTrue(project.IsWindowsPresentationFoundationProject());
-			Assert.IsFalse(project.IsWindowsFormsProject());
-
-			Assert.AreEqual(1, project.TargetFrameworks.Count);
-			Assert.AreEqual(1, project.TargetFrameworks.Count(x => x == "net461"));
-
-			Assert.AreEqual(2, project.Configurations.Count);
-			Assert.AreEqual(1, project.Configurations.Count(x => x == "Debug"));
-			Assert.AreEqual(1, project.Configurations.Count(x => x == "Release"));
-
-			Assert.AreEqual(1, project.Platforms.Count);
-			Assert.AreEqual(1, project.Platforms.Count(x => x == "AnyCPU"));
-
-			Assert.AreEqual(5, project.PropertyGroups.Count);
-
-			var transformation = new XamlPagesTransformation();
-
-			transformation.Transform(project);
-
-			var includeItems = project.ItemGroups.SelectMany(x => x.Elements()).ToImmutableList();
-
-			// App.xaml is NOT included due to ApplicationDefinition
-			// App.xaml.cs is NOT included (.xaml.cs in project folder, verified children)
-			// Views\Shell.xaml.cs is NOT included (.xaml.cs in project folder, verified children)
-			// .\..\Views\Initialize.xaml.cs is included (not in project folder)
-			// Views\Shell.xaml is NOT included due to Page
-			// .\..\Views\Initialize.xaml is included (not in project folder)
-
-			Assert.AreEqual(7, includeItems.Count);
-
-			Assert.AreEqual(5, includeItems.Count(x => x.Name == project.XmlNamespace + "Reference"));
-			Assert.AreEqual(1, includeItems.Count(x => x.Name == project.XmlNamespace + "Page"));
-			Assert.AreEqual(0, includeItems.Count(x => x.Name == project.XmlNamespace + "ApplicationDefinition"));
-			Assert.AreEqual(1, includeItems.Count(x => x.Name == project.XmlNamespace + "Compile"));
-			Assert.AreEqual(1, includeItems.Count(x => x.Name == project.XmlNamespace + "Compile" && x.Attribute("Include") != null));
-		}
-
-		private static async Task<Project> ParseAndTransform(
-			string xml,
-			[System.Runtime.CompilerServices.CallerMemberName]
-			string memberName = ""
-		)
-		{
-			var testCsProjFile = $"{memberName}_test.csproj";
-
-			await File.WriteAllTextAsync(testCsProjFile, xml, Encoding.UTF8);
-
-			var project = new ProjectReader().Read(testCsProjFile);
-
-			return project;
-		}
-	}
+        private static async Task<Project> ParseAndTransform(string xml, [System.Runtime.CompilerServices.CallerMemberName] string memberName = "")
+        {
+            var testCsProjFile = $"{memberName}_test.csproj";
+            await File.WriteAllTextAsync(testCsProjFile, xml, Encoding.UTF8);
+            var project = new ProjectReader().Read(testCsProjFile);
+            return project;
+        }
+    }
 }

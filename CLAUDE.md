@@ -14,12 +14,12 @@ It ships as a set of NuGet packages under the `Net4x.*` prefix, plus two .NET gl
 # Build everything
 dotnet build Project2015To2017.sln
 
-# Run the full test suite (MSTest, net8.0)
+# Run the full test suite (xUnit, net8.0)
 dotnet test Project2015To2017.Tests/Project2015To2017.Tests.csproj
 
-# Run a single test or test class
+# Run a single test class, or one exact test
 dotnet test Project2015To2017.Tests/Project2015To2017.Tests.csproj --filter "FullyQualifiedName~XamlTransformationTest"
-dotnet test Project2015To2017.Tests/Project2015To2017.Tests.csproj --filter "Name=TransformsPresentationPages"
+dotnet test Project2015To2017.Tests/Project2015To2017.Tests.csproj --filter "FullyQualifiedName=Project2015To2017.Tests.XamlTransformationTest.TransformsPresentationPages"
 
 # Run a CLI against a project without installing it
 dotnet run --project Project2015To2017.Migrate2019.Tool -- wizard "C:\path\to\Some.sln"
@@ -148,11 +148,15 @@ for genuine evaluation bugs.
 
 ## Testing conventions
 
-MSTest, one test class per transformation or reader. Fixtures live in
+xUnit (`[Fact]`), one test class per transformation or reader. Fixtures live in
 `Project2015To2017.Tests/TestFiles/` as `*.testcsproj` / `*.testsln` — the non-standard extensions
 keep MSBuild from treating them as real projects, and each is copied to the output directory by an
 explicit `<None Include>` entry in the test csproj. **A new fixture file needs that entry added or it
 will not be there at run time.**
+
+`Assert.ThrowsAsync` returns a `Task` — always `await` it. Two tests here sat green for years
+because the returned task was discarded, so the assertion never ran and hid a deliberate change to
+the `OutputType` contract.
 
 `Core` has `[assembly: InternalsVisibleTo("Project2015To2017.Tests")]`, so internals are testable.
 The test project references `Core`, `Migrate2017.Library` and `Project2015To2017` — not the 2019

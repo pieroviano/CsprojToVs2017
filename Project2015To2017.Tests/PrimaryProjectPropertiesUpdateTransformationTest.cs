@@ -1,65 +1,67 @@
 using System.IO;
 using System.Xml.Linq;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Xunit;
 using Project2015To2017.Definition;
 using Project2015To2017.Transforms;
 
 namespace Project2015To2017.Tests
 {
-	[TestClass]
-	public class PrimaryProjectPropertiesUpdateTransformationTest
-	{
-		[TestMethod]
-		public void OutputAppendTargetFrameworkToOutputPathNull()
-		{
-			var project = new Project
-			{
-				IsModernProject = true,
-				AppendTargetFrameworkToOutputPath = null,
-				PropertyGroups = new[] { new XElement("PropertyGroup") },
-				FilePath = new FileInfo("test.cs")
-			};
+    public class PrimaryProjectPropertiesUpdateTransformationTest
+    {
+        [Fact]
+        public void OutputAppendTargetFrameworkToOutputPathNull()
+        {
+            var project = new Project
+            {
+                IsModernProject = true,
+                AppendTargetFrameworkToOutputPath = null,
+                PropertyGroups = new[]
+                {
+                    new XElement("PropertyGroup")
+                },
+                FilePath = new FileInfo("test.cs")
+            };
+            new PrimaryProjectPropertiesUpdateTransformation().Transform(project);
+            var appendTargetFrameworkToOutputPath = project.Property("AppendTargetFrameworkToOutputPath");
+            Assert.Null(appendTargetFrameworkToOutputPath);
+        }
 
-			new PrimaryProjectPropertiesUpdateTransformation().Transform(project);
+        [Fact]
+        public void OutputAppendTargetFrameworkToOutputPathTrue()
+        {
+            var project = new Project
+            {
+                IsModernProject = true,
+                AppendTargetFrameworkToOutputPath = true,
+                PropertyGroups = new[]
+                {
+                    new XElement("PropertyGroup")
+                },
+                FilePath = new FileInfo("test.cs")
+            };
+            new PrimaryProjectPropertiesUpdateTransformation().Transform(project);
+            var appendTargetFrameworkToOutputPath = project.Property("AppendTargetFrameworkToOutputPath");
+            Assert.NotNull(appendTargetFrameworkToOutputPath);
+            Assert.Equal("true", appendTargetFrameworkToOutputPath.Value);
+        }
 
-			var appendTargetFrameworkToOutputPath = project.Property("AppendTargetFrameworkToOutputPath");
-			Assert.IsNull(appendTargetFrameworkToOutputPath);
-		}
-
-		[TestMethod]
-		public void OutputAppendTargetFrameworkToOutputPathTrue()
-		{
-			var project = new Project
-			{
-				IsModernProject = true,
-				AppendTargetFrameworkToOutputPath = true,
-				PropertyGroups = new[] { new XElement("PropertyGroup") },
-				FilePath = new FileInfo("test.cs")
-			};
-
-			new PrimaryProjectPropertiesUpdateTransformation().Transform(project);
-
-			var appendTargetFrameworkToOutputPath = project.Property("AppendTargetFrameworkToOutputPath");
-			Assert.IsNotNull(appendTargetFrameworkToOutputPath);
-			Assert.AreEqual("true", appendTargetFrameworkToOutputPath.Value);
-		}
-
-		[TestMethod]
-		public void OutputAppendTargetFrameworkToOutputPathFalse()
-		{
-			var project = new Project
-			{
-				IsModernProject = true,
-				AppendTargetFrameworkToOutputPath = false,
-				PropertyGroups = new[] { new XElement("PropertyGroup") },
-				FilePath = new FileInfo("test.cs")
-			};
-
-			new PrimaryProjectPropertiesUpdateTransformation().Transform(project);
-
-			var appendTargetFrameworkToOutputPath = project.Property("AppendTargetFrameworkToOutputPath");
-			Assert.IsNotNull(appendTargetFrameworkToOutputPath);
-			Assert.AreEqual("false", appendTargetFrameworkToOutputPath.Value);
-		}
-	}
+        [Fact]
+        public void OutputAppendTargetFrameworkToOutputPathFalse()
+        {
+            var project = new Project
+            {
+                IsModernProject = true,
+                AppendTargetFrameworkToOutputPath = false,
+                PropertyGroups = new[]
+                {
+                    new XElement("PropertyGroup")
+                },
+                FilePath = new FileInfo("test.cs")
+            };
+            new PrimaryProjectPropertiesUpdateTransformation().Transform(project);
+            var appendTargetFrameworkToOutputPath = project.Property("AppendTargetFrameworkToOutputPath");
+            Assert.NotNull(appendTargetFrameworkToOutputPath);
+            Assert.Equal("false", appendTargetFrameworkToOutputPath.Value);
+        }
+    }
 }

@@ -6,42 +6,37 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Xunit;
 using Project2015To2017.Definition;
 using Project2015To2017.Reading;
 using Project2015To2017.Writing;
 
 namespace Project2015To2017.Tests
 {
-	[TestClass]
-	public class ProjectWriterTest
-	{
-		private static readonly string deletionsPath = Path.Combine("TestFiles", "Deletions");
+    public class ProjectWriterTest
+    {
+        private static readonly string deletionsPath = Path.Combine("TestFiles", "Deletions");
+        [Fact]
+        public void ValidatesFileIsWritableProgram()
+        {
+            var writer = new ProjectWriter();
+            var copiedProjectFile = Path.Combine("TestFiles", "OtherTestProjects", $"{nameof(ValidatesFileIsWritableProgram)}.readonly");
+            if (File.Exists(copiedProjectFile))
+            {
+                File.SetAttributes(copiedProjectFile, FileAttributes.Normal);
+                File.Delete(copiedProjectFile);
+            }
 
-		[TestMethod]
-		public void ValidatesFileIsWritableProgram()
-		{
-			var writer = new ProjectWriter();
+            File.Copy(Path.Combine("TestFiles", "OtherTestProjects", "readonly.testcsproj"), copiedProjectFile);
+            File.SetAttributes(copiedProjectFile, FileAttributes.ReadOnly);
+            var project = new ProjectReader().Read(copiedProjectFile);
+            Assert.False(writer.TryWrite(project));
+        }
 
-			var copiedProjectFile = Path.Combine("TestFiles", "OtherTestProjects", $"{nameof(ValidatesFileIsWritableProgram)}.readonly");
-			if (File.Exists(copiedProjectFile))
-			{
-				File.SetAttributes(copiedProjectFile, FileAttributes.Normal);
-				File.Delete(copiedProjectFile);
-			}
-
-			File.Copy(Path.Combine("TestFiles", "OtherTestProjects", "readonly.testcsproj"), copiedProjectFile);
-			File.SetAttributes(copiedProjectFile, FileAttributes.ReadOnly);
-			var project = new ProjectReader().Read(copiedProjectFile);
-
-			Assert.IsFalse(writer.TryWrite(project));
-		}
-
-
-		[TestMethod]
-		public async Task WritesDistinctConfigurations()
-		{
-			const string xml = @"
+        [Fact]
+        public async Task WritesDistinctConfigurations()
+        {
+            const string xml = @"
 <Project DefaultTargets=""Build"" xmlns=""http://schemas.microsoft.com/developer/msbuild/2003"" ToolsVersion=""4.0"">
   <Import Project=""$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props"" Condition=""Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')"" />
   <PropertyGroup>
@@ -115,242 +110,158 @@ namespace Project2015To2017.Tests
     <RunCodeAnalysis>true</RunCodeAnalysis>
   </PropertyGroup>
  </Project>";
+            var project = await ParseAndTransform(xml).ConfigureAwait(false);
+            Assert.Equal(2, project.Configurations.Count);
+            Assert.Equal(1, project.Configurations.Count(x => x == "Debug"));
+            Assert.Equal(1, project.Configurations.Count(x => x == "Release"));
+            var writer = new ProjectWriter();
+            var xmlNode = writer.CreateXml(project);
+            var generatedConfigurations = xmlNode.Element("PropertyGroup").Element("Configurations");
+            Assert.Null(generatedConfigurations);
+        }
 
-			var project = await ParseAndTransform(xml).ConfigureAwait(false);
+        [Fact]
+        public void SkipDelaySignNull()
+        {
+            var writer = new ProjectWriter();
+            var xmlNode = writer.CreateXml(new Project { PropertyGroups = new[] { new XElement("PropertyGroup") }, FilePath = new FileInfo("test.cs") });
+            var delaySign = xmlNode.Elements("PropertyGroup").First().Element("DelaySign");
+            Assert.Null(delaySign);
+        }
 
-			Assert.AreEqual(2, project.Configurations.Count);
-			Assert.AreEqual(1, project.Configurations.Count(x => x == "Debug"));
-			Assert.AreEqual(1, project.Configurations.Count(x => x == "Release"));
+        [Fact]
+        public void OutputDelaySignTrue()
+        {
+            var writer = new ProjectWriter();
+            var xmlNode = writer.CreateXml(new Project { PropertyGroups = new[] { new XElement("PropertyGroup", new XElement("DelaySign", "true")) }, FilePath = new FileInfo("test.cs") });
+            var delaySign = xmlNode.Elements("PropertyGroup").First().Element("DelaySign");
+            Assert.NotNull(delaySign);
+            Assert.Equal("true", delaySign.Value);
+        }
 
-			var writer = new ProjectWriter();
-			var xmlNode = writer.CreateXml(project);
+        [Fact]
+        public void OutputDelaySignFalse()
+        {
+            var writer = new ProjectWriter();
+            var xmlNode = writer.CreateXml(new Project { PropertyGroups = new[] { new XElement("PropertyGroup", new XElement("DelaySign", "false")) }, FilePath = new FileInfo("test.cs") });
+            var delaySign = xmlNode.Elements("PropertyGroup").First().Element("DelaySign");
+            Assert.NotNull(delaySign);
+            Assert.Equal("false", delaySign.Value);
+        }
 
-			var generatedConfigurations = xmlNode.Element("PropertyGroup").Element("Configurations");
-			Assert.IsNull(generatedConfigurations);
-		}
+        private static async Task<Project> ParseAndTransform(string xml, [CallerMemberName] string memberName = "")
+        {
+            var testCsProjFile = $"{memberName}_test.csproj";
+            await File.WriteAllTextAsync(testCsProjFile, xml, Encoding.UTF8);
+            var project = new ProjectReader().Read(testCsProjFile);
+            return project;
+        }
 
-		[TestMethod]
-		public void SkipDelaySignNull()
-		{
-			var writer = new ProjectWriter();
-			var xmlNode = writer.CreateXml(new Project
-			{
-				PropertyGroups = new[] { new XElement("PropertyGroup") },
-				FilePath = new FileInfo("test.cs")
-			});
+        [Fact]
+        public void DeletedFileIsNotCheckedOut()
+        {
+            var filesToDelete = new FileSystemInfo[]
+            {
+                new FileInfo(Path.Combine(deletionsPath, "a.txt")),
+                new FileInfo(Path.Combine(deletionsPath, "AssemblyInfo.txt"))
+            };
+            var assemblyInfoFile = new FileInfo(Path.Combine(deletionsPath, "AssemblyInfo.txt"));
+            var actualDeletedFiles = new List<FileSystemInfo>();
+            var checkedOutFiles = new List<FileSystemInfo>();
+            //Just simulate deletion so we can just check the list
+            void Deletion(FileSystemInfo info) => actualDeletedFiles.Add(info);
+            void Checkout(FileSystemInfo info) => checkedOutFiles.Add(info);
+            var writer = new ProjectWriter(new ProjectWriteOptions { DeleteFileOperation = Deletion, CheckoutOperation = Checkout });
+            Assert.True(writer.TryWrite(new Project { FilePath = new FileInfo(Path.Combine(deletionsPath, "Test1.csproj")), AssemblyAttributes = new AssemblyAttributes { File = assemblyInfoFile, Company = "A Company" }, Deletions = filesToDelete.ToArray() }));
+            Assert.Equal(filesToDelete, actualDeletedFiles);
+            Assert.DoesNotContain(assemblyInfoFile, checkedOutFiles);
+        }
 
-			var delaySign = xmlNode.Elements("PropertyGroup").First().Element("DelaySign");
-			Assert.IsNull(delaySign);
-		}
+        [Fact]
+        public void DeletedFileIsProcessed()
+        {
+            var filesToDelete = new FileSystemInfo[]
+            {
+                new FileInfo(@"TestFiles\Deletions\a.txt")
+            };
+            var actualDeletedFiles = new List<FileSystemInfo>();
+            //Just simulate deletion so we can just check the list
+            void Deletion(FileSystemInfo info) => actualDeletedFiles.Add(info);
+            var writer = new ProjectWriter(new ProjectWriteOptions { DeleteFileOperation = Deletion });
+            Assert.True(writer.TryWrite(new Project { FilePath = new FileInfo(@"TestFiles\Deletions\Test1.csproj"), Deletions = filesToDelete.ToArray() }));
+            Assert.Equal(filesToDelete, actualDeletedFiles);
+        }
 
-		[TestMethod]
-		public void OutputDelaySignTrue()
-		{
-			var writer = new ProjectWriter();
-			var xmlNode = writer.CreateXml(new Project
-			{
-				PropertyGroups = new[] { new XElement("PropertyGroup", new XElement("DelaySign", "true")) },
-				FilePath = new FileInfo("test.cs")
-			});
+        [Fact]
+        public void DeletedFolderIsProcessed()
+        {
+            //delete the dummy file we put in to make sure the folder was copied over
+            File.Delete(@"TestFiles\Deletions\EmptyFolder\a.txt");
+            var filesToDelete = new FileSystemInfo[]
+            {
+                new DirectoryInfo(@"TestFiles\Deletions\EmptyFolder")
+            };
+            var actualDeletedFiles = new List<FileSystemInfo>();
+            //Just simulate deletion so we can just check the list
+            void Deletion(FileSystemInfo info) => actualDeletedFiles.Add(info);
+            var writer = new ProjectWriter(new ProjectWriteOptions { DeleteFileOperation = Deletion });
+            Assert.True(writer.TryWrite(new Project { FilePath = new FileInfo(@"TestFiles\Deletions\Test2.csproj"), Deletions = filesToDelete.ToArray() }));
+            Assert.Equal(filesToDelete, actualDeletedFiles);
+        }
 
-			var delaySign = xmlNode.Elements("PropertyGroup").First().Element("DelaySign");
-			Assert.IsNotNull(delaySign);
-			Assert.AreEqual("true", delaySign.Value);
-		}
+        [Fact]
+        public void DeletedNonEmptyFolderIsProcessedIfCleared()
+        {
+            var folder = @"TestFiles\Deletions\NonEmptyFolder";
+            var file = @"TestFiles\Deletions\NonEmptyFolder\a.txt";
+            var filesToDelete = new FileSystemInfo[]
+            {
+                new FileInfo(file),
+                new DirectoryInfo(folder)
+            };
+            var actualDeletedFiles = new List<FileSystemInfo>();
+            //Just simulate deletion so we can just check the list
+            void Deletion(FileSystemInfo info)
+            {
+                //need to actually delete this one so the folder can be deleted
+                info.Delete();
+                actualDeletedFiles.Add(info);
+            }
 
-		[TestMethod]
-		public void OutputDelaySignFalse()
-		{
-			var writer = new ProjectWriter();
-			var xmlNode = writer.CreateXml(new Project
-			{
-				PropertyGroups = new[] { new XElement("PropertyGroup", new XElement("DelaySign", "false")) },
-				FilePath = new FileInfo("test.cs")
-			});
+            try
+            {
+                var writer = new ProjectWriter(new ProjectWriteOptions { DeleteFileOperation = Deletion });
+                Assert.True(writer.TryWrite(new Project { FilePath = new FileInfo(@"TestFiles\Deletions\Test3.csproj"), Deletions = filesToDelete.ToArray() }));
+                Assert.Equal(filesToDelete, actualDeletedFiles);
+            }
+            finally
+            {
+                //Restore the directory and file back to how it was before test
+                if (!Directory.Exists(folder))
+                {
+                    Directory.CreateDirectory(folder);
+                }
 
-			var delaySign = xmlNode.Elements("PropertyGroup").First().Element("DelaySign");
-			Assert.IsNotNull(delaySign);
-			Assert.AreEqual("false", delaySign.Value);
-		}
+                if (!File.Exists(file))
+                {
+                    File.WriteAllBytes(file, new byte[0] { });
+                }
+            }
+        }
 
-		private static async Task<Project> ParseAndTransform(string xml, [CallerMemberName] string memberName = "")
-		{
-			var testCsProjFile = $"{memberName}_test.csproj";
-
-			await File.WriteAllTextAsync(testCsProjFile, xml, Encoding.UTF8);
-
-			var project = new ProjectReader().Read(testCsProjFile);
-
-			return project;
-		}
-
-		[TestMethod]
-		public void DeletedFileIsNotCheckedOut()
-		{
-			var filesToDelete = new FileSystemInfo[]
-			{
-				new FileInfo(Path.Combine(deletionsPath, "a.txt")),
-				new FileInfo(Path.Combine(deletionsPath, "AssemblyInfo.txt"))
-			};
-
-			var assemblyInfoFile = new FileInfo(Path.Combine(deletionsPath, "AssemblyInfo.txt"));
-
-			var actualDeletedFiles = new List<FileSystemInfo>();
-			var checkedOutFiles = new List<FileSystemInfo>();
-
-			//Just simulate deletion so we can just check the list
-			void Deletion(FileSystemInfo info) => actualDeletedFiles.Add(info);
-			void Checkout(FileSystemInfo info) => checkedOutFiles.Add(info);
-
-			var writer = new ProjectWriter(new ProjectWriteOptions { DeleteFileOperation = Deletion, CheckoutOperation = Checkout });
-
-			Assert.IsTrue(writer.TryWrite(
-				new Project
-				{
-					FilePath = new FileInfo(Path.Combine(deletionsPath, "Test1.csproj")),
-					AssemblyAttributes = new AssemblyAttributes
-					{
-						File = assemblyInfoFile,
-						Company = "A Company"
-					},
-					Deletions = filesToDelete.ToArray()
-				}
-			));
-
-			CollectionAssert.AreEqual(filesToDelete, actualDeletedFiles);
-			CollectionAssert.DoesNotContain(checkedOutFiles, assemblyInfoFile);
-		}
-
-		[TestMethod]
-		public void DeletedFileIsProcessed()
-		{
-			var filesToDelete = new FileSystemInfo[]
-			{
-				new FileInfo(@"TestFiles\Deletions\a.txt")
-			};
-
-			var actualDeletedFiles = new List<FileSystemInfo>();
-
-			//Just simulate deletion so we can just check the list
-			void Deletion(FileSystemInfo info) => actualDeletedFiles.Add(info);
-
-			var writer = new ProjectWriter(new ProjectWriteOptions { DeleteFileOperation = Deletion });
-
-			Assert.IsTrue(writer.TryWrite(
-				new Project
-				{
-					FilePath = new FileInfo(@"TestFiles\Deletions\Test1.csproj"),
-					Deletions = filesToDelete.ToArray()
-				}
-			));
-
-			CollectionAssert.AreEqual(filesToDelete, actualDeletedFiles);
-		}
-
-		[TestMethod]
-		public void DeletedFolderIsProcessed()
-		{
-			//delete the dummy file we put in to make sure the folder was copied over
-			File.Delete(@"TestFiles\Deletions\EmptyFolder\a.txt");
-
-			var filesToDelete = new FileSystemInfo[]
-			{
-				new DirectoryInfo(@"TestFiles\Deletions\EmptyFolder")
-			};
-
-			var actualDeletedFiles = new List<FileSystemInfo>();
-
-			//Just simulate deletion so we can just check the list
-			void Deletion(FileSystemInfo info) => actualDeletedFiles.Add(info);
-
-			var writer = new ProjectWriter(new ProjectWriteOptions { DeleteFileOperation = Deletion });
-
-			Assert.IsTrue(writer.TryWrite(
-				new Project
-				{
-					FilePath = new FileInfo(@"TestFiles\Deletions\Test2.csproj"),
-					Deletions = filesToDelete.ToArray()
-				}
-			));
-
-			CollectionAssert.AreEqual(filesToDelete, actualDeletedFiles);
-		}
-
-		[TestMethod]
-		public void DeletedNonEmptyFolderIsProcessedIfCleared()
-		{
-			var folder = @"TestFiles\Deletions\NonEmptyFolder";
-			var file = @"TestFiles\Deletions\NonEmptyFolder\a.txt";
-
-			var filesToDelete = new FileSystemInfo[]
-			{
-				new FileInfo(file),
-				new DirectoryInfo(folder)
-			};
-
-			var actualDeletedFiles = new List<FileSystemInfo>();
-
-			//Just simulate deletion so we can just check the list
-			void Deletion(FileSystemInfo info)
-			{
-				//need to actually delete this one so the folder can be deleted
-				info.Delete();
-				actualDeletedFiles.Add(info);
-			}
-
-			try
-			{
-				var writer = new ProjectWriter(new ProjectWriteOptions { DeleteFileOperation = Deletion });
-
-				Assert.IsTrue(writer.TryWrite(
-					new Project
-					{
-						FilePath = new FileInfo(@"TestFiles\Deletions\Test3.csproj"),
-						Deletions = filesToDelete.ToArray()
-					}
-				));
-
-				CollectionAssert.AreEqual(filesToDelete, actualDeletedFiles);
-			}
-			finally
-			{
-				//Restore the directory and file back to how it was before test
-				if (!Directory.Exists(folder))
-				{
-					Directory.CreateDirectory(folder);
-				}
-
-				if (!File.Exists(file))
-				{
-					File.WriteAllBytes(file, new byte[0] { });
-				}
-			}
-		}
-
-		[TestMethod]
-		public void DeletedNonEmptyFolderIsNotProcessed()
-		{
-			var filesToDelete = new FileSystemInfo[]
-			{
-				new DirectoryInfo(@"TestFiles\Deletions\NonEmptyFolder2")
-			};
-
-			var actualDeletedFiles = new List<FileSystemInfo>();
-
-			//Just simulate deletion so we can just check the list
-			void Deletion(FileSystemInfo info) => actualDeletedFiles.Add(info);
-
-			var writer = new ProjectWriter(new ProjectWriteOptions { DeleteFileOperation = Deletion });
-
-			Assert.IsTrue(writer.TryWrite(
-				new Project
-				{
-					FilePath = new FileInfo(@"TestFiles\Deletions\Test4.csproj"),
-					Deletions = filesToDelete.ToArray()
-				}
-			));
-
-			CollectionAssert.AreEqual(new FileSystemInfo[0], actualDeletedFiles);
-		}
-	}
+        [Fact]
+        public void DeletedNonEmptyFolderIsNotProcessed()
+        {
+            var filesToDelete = new FileSystemInfo[]
+            {
+                new DirectoryInfo(@"TestFiles\Deletions\NonEmptyFolder2")
+            };
+            var actualDeletedFiles = new List<FileSystemInfo>();
+            //Just simulate deletion so we can just check the list
+            void Deletion(FileSystemInfo info) => actualDeletedFiles.Add(info);
+            var writer = new ProjectWriter(new ProjectWriteOptions { DeleteFileOperation = Deletion });
+            Assert.True(writer.TryWrite(new Project { FilePath = new FileInfo(@"TestFiles\Deletions\Test4.csproj"), Deletions = filesToDelete.ToArray() }));
+            Assert.Equal(new FileSystemInfo[0], actualDeletedFiles);
+        }
+    }
 }
