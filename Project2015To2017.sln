@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.28711.60
+# Visual Studio Version 18
+VisualStudioVersion = 18.7.11919.86
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Project2015To2017.Tests", "Project2015To2017.Tests\Project2015To2017.Tests.csproj", "{1AF63B37-E57F-41F1-B34F-177DBC927D97}"
 EndProject
@@ -10,6 +10,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		.editorconfig = .editorconfig
 		appveyor.yml = appveyor.yml
 		Directory.Build.props = Directory.Build.props
+		Directory.Build.targets = Directory.Build.targets
+		Directory.NuGet.props = Directory.NuGet.props
 		README.md = README.md
 	EndProjectSection
 EndProject
@@ -26,6 +28,8 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Project2015To2017.Migrate2019.Tool", "Project2015To2017.Migrate2019.Tool\Project2015To2017.Migrate2019.Tool.csproj", "{9B6CF418-64C3-4630-9838-5605EFAA5822}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Project2015To2017.Mcp.Server", "Project2015To2017.Mcp.Server\Project2015To2017.Mcp.Server.csproj", "{2F8E1115-B1F4-4A69-9B27-B2D18A6E138C}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{7FB53DFC-0160-46B7-B71B-4039167969B7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -136,6 +140,9 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{1AF63B37-E57F-41F1-B34F-177DBC927D97} = {7FB53DFC-0160-46B7-B71B-4039167969B7}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {23B4DBC6-9379-43AE-BC12-3BD4BEA6B4F6}
